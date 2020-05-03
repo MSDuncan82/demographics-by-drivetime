@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 
@@ -75,7 +75,8 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
+# exclude data & gis from source control by default
+/gis/
 /data/
 
 # Mac OS-specific storage files
