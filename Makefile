@@ -5,7 +5,7 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-BUCKET = [OPTIONAL] your-bucket-for-syncing-data (do not include 's3://')
+BUCKET = censusdata-199ca23a-006d-4a26-ae62-0c41c0d56db5
 PROFILE = default
 PROJECT_NAME = demographics-by-drivetime
 PYTHON_INTERPRETER = python3
@@ -33,25 +33,22 @@ data: requirements
 clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
-
-## Lint using flake8
-lint:
-	flake8 src
+	find . -type d -name ".ipynb_checkpoints" | xargs rm -rf
 
 ## Upload Data to S3
-sync_data_to_s3:
+sync_data_to_s3: clean
 ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(BUCKET)/data/
+	aws s3 sync data/ s3://$(BUCKET)/
 else
-	aws s3 sync data/ s3://$(BUCKET)/data/ --profile $(PROFILE)
+	aws s3 sync data/ s3://$(BUCKET)/ --profile $(PROFILE)
 endif
 
 ## Download Data from S3
-sync_data_from_s3:
+sync_data_from_s3: clean
 ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(BUCKET)/data/ data/
+	aws s3 sync data/ s3://$(BUCKET)/
 else
-	aws s3 sync s3://$(BUCKET)/data/ data/ --profile $(PROFILE)
+	aws s3 sync data/ s3://$(BUCKET)/ --profile $(PROFILE)
 endif
 
 ## Set up python interpreter environment

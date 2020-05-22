@@ -1,5 +1,6 @@
 # local package
 -e .
+-e /home/mike/projects/api_wrapper
 
 # external requirements
 click
