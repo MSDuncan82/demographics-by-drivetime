@@ -1,4 +1,4 @@
-# local package
+# local packages
 -e .
 -e /home/mike/projects/api_wrapper
 
