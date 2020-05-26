@@ -1,4 +1,5 @@
 from src.data.connect_db import create_engine_to_rds
+from src.data.load_s3 import CensusDescription
 from sqlalchemy import Column, String, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -6,16 +7,18 @@ from geoalchemy2 import Geometry
 
 Base = declarative_base()
 
-
-class CensusTableList:
+class CensusTableList(Base):
     """
-    SqlAlchemy `table_data` Class
+    SqlAlchemy `table_summary` Class
     
     Primary Key: table_code (i.e. "B01003")
+
+    Source Files: 
+        https://www2.census.gov/programs-surveys/acs/tech_docs/table_shells/table_lists/2018_DataProductList.xlsx?#
+
     """
 
-    pass
-
+    __tablename__ = 'table_summary'
 
 class SqlExec:
     def __init__(self, db="census_data"):

@@ -1,10 +1,15 @@
 from proj_paths.paths import Paths
+import zipfile
+import io
+import requests
 import boto3
 import pandas as pd
 import os
+import shutil
 import uuid
 
 class S3Exec:
+    
     def __init__(self,):
         """Initiate boto connection to S3"""
 
@@ -41,7 +46,7 @@ class S3Exec:
             CreateBucketConfiguration={"LocationConstraint": current_region},
         )
 
-        if versioning is True:
+        if versioning:
             bkt_versioning = self.s3_resource.BucketVersioning(bucket_name)
             bkt_versioning.enable()
 
@@ -51,7 +56,6 @@ class S3Exec:
         """Generate filename with random prefix"""
 
         return "".join([str(uuid.uuid4().hex[:6]), f"_{filename}"])
-
 
     def rename_existing_files(self, filepath):
         """Remame existing file"""
@@ -85,19 +89,41 @@ class CensusDescription:
             "https://www2.census.gov/programs-surveys/acs/tech_docs/table_shells/table_lists/2018_DataProductList.xlsx?#",
             "https://www2.census.gov/programs-surveys/popest/geographies/2018/all-geocodes-v2018.xlsx",
         ]
+
+        self.census_summaryfiles_zip = [
+            'https://www2.census.gov/programs-surveys/acs/summary_file/2018/data/2018_5yr_Summary_FileTemplates.zip?#'
+        ]
         
         self.s3_exec = S3Exec()
         self.bucket = self.s3_exec.list_buckets()[0]
 
 
-    def add_summary_files_to_local(self, data_path=None):
+    def add_summary_files_to_local(self, data_path=None, overwrite=True):
         """Add census summary files to local `proj_root/data/`"""
 
+        for summary_zip_file_url in self.census_summaryfiles_zip:
+            self.add_zip_file_to_local(summary_zip_file_url, data_path=data_path, overwrite=overwrite)
+
         for summary_excel_file_url in self.census_summaryfiles_excel:
+            self.add_excel_file_to_local(summary_excel_file_url, data_path=data_path, overwrite=overwrite)
+    
+    def add_zip_file_to_local(self, url, data_path=None, dirname='summary_filetemplates', local=True, overwrite=True):
+        """Add zip file as directory to data_path"""
 
-            self.add_excel_file_to_local(summary_excel_file_url, data_path=data_path)
+        if data_path is None:
+            data_path = self.census_data_path
 
-    def add_excel_file_to_local(self, url, data_path=None, local=True):
+        r = requests.get(url, stream=True)
+        
+        with zipfile.ZipFile(io.BytesIO(r.content)) as summary_zip:
+            temp_directory = f'/tmp/{dirname}'
+            shutil.rmtree(temp_directory,)
+            os.mkdir(temp_directory)
+            summary_zip.extractall(temp_directory)
+
+        os.rename(temp_directory, os.path.join(data_path, dirname))
+
+    def add_excel_file_to_local(self, url, data_path=None, local=True, overwrite=True):
         """Add excel file from url as uniquely named csv file to s3"""
 
         df, filename = self.get_excel_file(url)
@@ -125,7 +151,10 @@ class CensusDescription:
     def list_s3_files(self):
         """list s3 files in census-data bucket"""
 
-        return self.s3_exec.list_files(self.bucket)
+        bucket_objects = self.s3_exec.list_files(self.bucket)
+        census_description_s3_files = [obj for obj in bucket_objects if 'census_description' in obj.key]
+
+        return census_description_s3_files
 
 if __name__ == "__main__":
 
@@ -134,3 +163,5 @@ if __name__ == "__main__":
     # census_description.add_summary_files_to_local()
 
     print([obj.key for obj in census_description.list_s3_files()])
+
+    census_description.add_zip_file_to_local(census_description.census_summaryfiles_zip[0])
