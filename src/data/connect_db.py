@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 
 
 def create_engine_to_rds(db_name):
+    """Connect to RDS database instance described by environment variables in .env"""
 
     dotenv.load_dotenv()
     username = os.getenv("RDS_USER")
@@ -13,6 +14,11 @@ def create_engine_to_rds(db_name):
 
     db_string = f"postgres://{username}:{password}@{endpoint}:{port}/{db_name}"
 
-    db = create_engine(db_string)
+    engine = create_engine(db_string, executemany_mode="batch")
 
-    return db
+    return engine
+
+
+if __name__ == "__main__":
+
+    engine = create_engine_to_rds("census_data")
