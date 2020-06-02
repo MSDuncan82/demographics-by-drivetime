@@ -30,10 +30,13 @@ data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/processed
 
 ## Delete all compiled Python files
-clean:
+clean: black
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 	find . -type d -name ".ipynb_checkpoints" | xargs rm -rf
+
+black:
+	black src/.
 
 ## Upload Data to S3
 sync_data_to_s3: clean

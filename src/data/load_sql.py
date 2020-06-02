@@ -1,83 +1,78 @@
-from src.data.connect_db import create_engine_to_rds
+from src.data.sql_exec import SqlExec
 from src.data.census_meta import CensusDescription
-from sqlalchemy import Column, String, Integer
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from geoalchemy2 import Geometry
+from src.data.census_geom import CensusGeometry
 import pandas as pd
 
-Base = declarative_base()
 
-
-class TableMetaData(Base):
+def createtable_table_metadata(sql_exec):
     """
     SqlAlchemy `table_metadata` Class
-    
+
     Primary Key: table_id (i.e. "B01003_001")
 
     Source Files: 
         https://www2.census.gov/programs-surveys/acs/summary_file/2018/data/2018_5yr_Summary_FileTemplates.zip?#
     """
 
-    __tablename__ = "table_metadata"
+    table_metadata_df = CensusDescription().get_table_metadata_df()
+    table_metadata_cols = table_metadata_df.reset_index().columns
 
-    table_id = Column(String, primary_key=True)
-    overall_category = Column(String)
-    subtitle_0 = Column(String)
-    subtitle_1 = Column(String)
-    subtitle_2 = Column(String)
-    subtitle_3 = Column(String)
-    subtitle_4 = Column(String)
-    subtitle_5 = Column(String)
-    subtitle_6 = Column(String)
-    subtitle_7 = Column(String)
+    table_metadata = sql_exec.create_table_class(
+        table_metadata_cols, "table_metadata", "TableMetaData", "table_id"
+    )
 
-    def __repr__(self):
+    sql_exec.add(table_metadata_df, name="table_metadata")
 
-        subtitle_lst = [
-            self.subtitle_0,
-            self.subtitle_1,
-            self.subtitle_2,
-            self.subtitle_3,
-            self.subtitle_4,
-            self.subtitle_5,
-            self.subtitle_6,
-            self.subtitle_7,
-        ]
-
-        subtitle_lst = [str(subtitle) for subtitle in subtitle_lst if subtitle]
-
-        return f"<Table: {self.table_id}, {self.overall_category}: {'%'.join(subtitle_lst)}>"
+    print("table_metadata created and filled")
 
 
-class SqlExec:
-    def __init__(self, db="census_data"):
+def createtable_county_boundaries(sql_exec):
+    """
+    SqlAlchemy `county_boundaries` Class
+    
+    Primary Key: GEOID {State FIP}{County FIP} 
 
-        self.engine = create_engine_to_rds("census_data")
-        self.session = sessionmaker(bind=self.engine)()
-        self.Base = Base
-        self.tables = self.Base.metadata.tables
+    Source Files: 
+        https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    """
 
-    def add(self, obj, name=None):
-        """Add obj or list of objects of sqlalchemy table class"""
+    county_geom_gdf = CensusGeometry().get_county_boundaries()
+    county_geom_df = pd.DataFrame(county_geom_gdf, dtype=str)
 
-        if isinstance(obj, list):
-            self.session.add_all(obj)
-            self.session.commit()
+    county_geom_cols = county_geom_df.reset_index().columns
 
-        elif isinstance(obj, pd.DataFrame):
-            if name is None:
-                raise NameError("Need to include table_name")
-            obj.to_sql(name, self.engine, if_exists="append", method="multi")
+    county_boundaries = sql_exec.create_table_class(
+        county_geom_cols, "county_boundaries", "CountyBoundaries", "GEOID"
+    )
 
-        else:
-            self.session.add(obj)
-            self.session.commit()
+    sql_exec.add(county_geom_df, name="county_boundaries")
 
-    def create_tables(self):
-        """Create all tables from `Base`"""
+    print("county_boundaries table created and filled")
 
-        Base.metadata.create_all(self.engine)
+
+def createtable_block_boundaries(sql_exec, state):
+    """
+    SqlAlchemy `block_boundaries` Class
+    
+    Primary Key: GEOID {State FIP}{County FIP}{Tract FIP}{Block FIP} 
+
+    Source Files: 
+        https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    """
+
+    block_geom_gdf = CensusGeometry().get_block_boundaries(state)
+    block_geom_df = pd.DataFrame(block_geom_gdf, dtype=str)
+    del block_geom_gdf
+
+    block_geom_cols = block_geom_df.reset_index().columns
+
+    block_boundaries = sql_exec.create_table_class(
+        block_geom_cols, "block_boundaries", "BlockBoundaries", "GEOID10"
+    )
+
+    sql_exec.add(block_geom_df, name="block_boundaries")
+
+    print(f"block_boundaries table created and filled with {state} blocks")
 
 
 if __name__ == "__main__":
@@ -85,7 +80,6 @@ if __name__ == "__main__":
     sql_exec = SqlExec()
     sql_exec.create_tables()
 
-    census_description = CensusDescription()
-    table_metadata_df = census_description.get_table_metadata_df()
-
-    sql_exec.add(table_metadata_df, name="table_metadata")
+    createtable_table_metadata(sql_exec)
+    createtable_county_boundaries(sql_exec)
+    createtable_block_boundaries(sql_exec, "Colorado")
