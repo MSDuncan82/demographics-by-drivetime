@@ -1,6 +1,6 @@
 from src.data.sql_exec import SqlExec
 from src.data.census_meta import CensusDescription
-from src.data.census_geom import CensusGeometry
+from src.data.census_boundaries import CensusGeometry
 import pandas as pd
 
 
