@@ -29,6 +29,21 @@ requirements: test_environment
 data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/processed
 
+## Load data to SQL db
+load_data: requirements load_meta load_county #TODO (find solution to memory issues) -> load_CO load_MT 
+
+load_meta:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -m
+
+load_county:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -c
+
+load_CO:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Colorado"
+
+load_MT:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Montana"
+
 ## Delete all compiled Python files
 clean: black
 	find . -type f -name "*.py[co]" -delete

@@ -1,4 +1,4 @@
-from api_wrapper.census_api import CensusBoundaries
+from api_wrapper.census_api.census_boundaries import CensusBoundaries
 import os
 import shutil
 import uuid
