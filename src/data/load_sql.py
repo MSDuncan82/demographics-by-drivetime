@@ -3,6 +3,8 @@ from src.data.census_meta import CensusDescription
 from src.data.census_boundaries import CensusGeometry
 import pandas as pd
 import argparse
+import logging
+from datetime import datetime
 
 
 def createtable_table_metadata(sql_exec):
@@ -19,7 +21,7 @@ def createtable_table_metadata(sql_exec):
     table_metadata_cols = table_metadata_df.reset_index().columns
 
     table_metadata = sql_exec.create_table_class(
-        table_metadata_cols, "table_metadata", "TableMetaData", "table_id"
+        table_metadata_cols, "table_metadata", "TableMetaData"
     )
 
     sql_exec.add(table_metadata_df, name="table_metadata", if_exists="replace")
@@ -43,7 +45,7 @@ def createtable_county_boundaries(sql_exec):
     county_geom_cols = county_geom_df.reset_index().columns
 
     county_boundaries = sql_exec.create_table_class(
-        county_geom_cols, "county_boundaries", "CountyBoundaries", "GEOID"
+        county_geom_cols, "county_boundaries", "CountyBoundaries"
     )
 
     sql_exec.add(county_geom_df, name="county_boundaries", if_exists="replace")
@@ -68,7 +70,7 @@ def createtable_block_boundaries(sql_exec, state):
     block_geom_cols = block_geom_df.reset_index().columns
 
     block_boundaries = sql_exec.create_table_class(
-        block_geom_cols, "block_boundaries", "BlockBoundaries", "GEOID10"
+        block_geom_cols, "block_boundaries", "BlockBoundaries"
     )
 
     sql_exec.add(block_geom_df, name="block_boundaries", if_exists="append")
@@ -109,6 +111,13 @@ def setup_argparse(boundaries=True):
             help="select the state of the block boundaries you want to load",
             type=str,
         )
+        parser.add_argument(
+            "-l",
+            "--log",
+            help="select the level of logging [debug, info, none]",
+            type=str,
+            default="none",
+        )
         parser._get_args()
 
     cmd_args = parser.parse_args()
@@ -124,16 +133,33 @@ def check_args(cmd_args):
         raise AttributeError("You need to specify at least one argument")
 
 
-def main():
+def main_wrapper(main):
+    def inner_wrapper():
+        cmd_args = setup_argparse()
+        log_level = cmd_args.log.lower()
+
+        verbose = True if log_level == "debug" else False
+        sql_exec = SqlExec(db="census_data", verbose=verbose)
+
+        if cmd_args.log.lower() in ["debug", "info"]:
+            current_datetime_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(
+                f"""[{current_datetime_str}] Loading data to {sql_exec.session.bind}\nwith {', '.join(cmd_args.__dict__.keys())}"""
+            )
+
+        return main(cmd_args=cmd_args, sql_exec=sql_exec)
+
+    return inner_wrapper
+
+
+@main_wrapper
+def main(cmd_args=None, sql_exec=None):
     """
     Run main functionality of load_sql
     
     Main function of load_sql that is to be used at the command line or in
     the Makefile to load the sql database with census data.
     """
-
-    cmd_args = setup_argparse()
-    sql_exec = SqlExec(db="census_data")
 
     if cmd_args.meta:
         createtable_table_metadata(sql_exec)

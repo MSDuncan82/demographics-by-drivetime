@@ -3,7 +3,7 @@ import dotenv
 from sqlalchemy import create_engine
 
 
-def create_engine_to_rds(db_name):
+def create_engine_to_rds(db_name, echo=True):
     """Connect to RDS database instance described by environment variables in .env"""
 
     dotenv.load_dotenv()
@@ -14,7 +14,7 @@ def create_engine_to_rds(db_name):
 
     db_string = f"postgres://{username}:{password}@{endpoint}:{port}/{db_name}"
 
-    engine = create_engine(db_string, executemany_mode="batch")
+    engine = create_engine(db_string, executemany_mode="batch", echo=echo)
 
     return engine
 

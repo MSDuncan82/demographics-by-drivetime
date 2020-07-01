@@ -20,9 +20,7 @@ class CensusData(object):
         kwargs = dict(state=state, county=county)
         hierarchy = self.census_data._parse_hierarchy(kwargs)
         df = self.census_data.get_data(state=state, county=county)
-        import ipdb
 
-        ipdb.set_trace()
         return df
 
 

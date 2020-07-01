@@ -25,24 +25,20 @@ requirements: test_environment
 	$(PYTHON_INTERPRETER) -m pip install -U pip setuptools wheel
 	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
 
-## Make Dataset
-data: requirements
-	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/processed
-
 ## Load data to SQL db
-load_data: requirements load_meta load_county #TODO (find solution to memory issues) -> load_CO load_MT 
+load_data: clean requirements load_meta load_county #TODO (find solution to memory issues) -> load_CO load_MT 
 
 load_meta:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -m
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -m -l debug >> logs/loadsql_log.txt
 
 load_county:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -c
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -c -l debug >> logs/loadsql_log.txt
 
 load_CO:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Colorado"
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Colorado" -l debug >> logs/loadsql_log.txt
 
 load_MT:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Montana"
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Montana" -l debug >> logs/loadsql_log.txt
 
 ## Delete all compiled Python files
 clean: black
