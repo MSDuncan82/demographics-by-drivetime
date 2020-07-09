@@ -8,6 +8,7 @@ import numpy as np
 from src.data.s3 import S3Exec
 from proj_paths.paths import Paths
 
+
 class CensusData(object):
     """
     Retrieve data from census
@@ -27,7 +28,7 @@ class CensusData(object):
         Get default data from CensusDataAPI for a given state and county.
         Default is to get data from all counties in state. TODO Add tables kwarg
     """
-    
+
     def __init__(self, year=2018, survey="acs5"):
 
         self.paths = Paths()
@@ -41,8 +42,9 @@ class CensusData(object):
 
         return df
 
+
 if __name__ == "__main__":
 
     census_data = CensusData()
     df = census_data.get_county_data(state="Colorado")
-    import ipdb; ipdb.set_trace()
+

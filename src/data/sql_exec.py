@@ -116,15 +116,16 @@ class SqlExec:
         return table_class
 
     def get_county_boundaries(self):
-        
-        county_boundaries_df = pd.read_sql('county_boundaries', self.engine, index_col='geoid')
+
+        county_boundaries_df = pd.read_sql(
+            "county_boundaries", self.engine, index_col="geoid"
+        )
         return county_boundaries_df
 
     def get_table_meta(self):
 
-        table_meta_df = pd.read_sql('table_metadata', self.engine, index_col='table_id')
+        table_meta_df = pd.read_sql("table_metadata", self.engine, index_col="table_id")
         return table_meta_df
-
 
 
 if __name__ == "__main__":
@@ -133,4 +134,3 @@ if __name__ == "__main__":
     sql_exec.get_table_info()
     cb_df = sql_exec.get_county_boundaries()
     tm_df = sql_exec.get_table_meta()
-
