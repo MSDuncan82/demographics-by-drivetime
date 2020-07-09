@@ -35,8 +35,10 @@ class CensusData(object):
         self.census_data = CensusDataAPI(survey="acs5", year=2018)
 
     def get_county_data(self, state, county="*"):
+        """Get default data from CensusDataAPI for a given state and county.
+        Default is to get data from all counties in state."""
 
-        kwargs = dict(state=state, county=county)
+        # kwargs = dict(state=state, county=county)
         # hierarchy = self.census_data._parse_hierarchy(kwargs)
         df = self.census_data.get_data(state=state, county=county)
 
