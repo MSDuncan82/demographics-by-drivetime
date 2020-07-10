@@ -118,7 +118,24 @@ class SqlLoader(SqlExec):
         return df
 
 
-class ArgParser(object):
+class LoadSqlArgParser(object):
+    """
+    Parse Arguments for Load Sql CLI
+    
+    Attributes
+    ----------
+    arguments : dict
+        nested dictionary to keep track of arguments 
+    parser : ArgumentParser
+        ArgumentParser from the argparse library
+
+    Methods
+    ---------
+    get_cli_arguments():
+        setup arguments and return cmd_args
+    """
+    
+
     def __init__(self):
 
         self.parser = argparse.ArgumentParser("Choose what to load into database")
@@ -155,6 +172,11 @@ class ArgParser(object):
 
         for var_name, kwargs in self.arguments.items:
             setup_single_argument(var_name, **kwargs)
+
+        parser._get_args()
+        cmd_args = parser.parse_args()
+
+        return cmd_args
 
     def setup_single_argument(self, var_name, **kwargs):
 
