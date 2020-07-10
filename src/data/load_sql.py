@@ -1,13 +1,14 @@
 from src.data.sql_exec import SqlExec
 from src.data.census_meta import CensusDescription
 from src.data.census_boundaries import CensusGeometry
+from src.data.census_data import CensusData
 import pandas as pd
 import argparse
 import logging
 from datetime import datetime
 
 
-class SqlLoader(object):
+class SqlLoader(SqlExec):
     # TODO current finish moving functions to class methods
     # TODO add data functionality
     # TODO docs
@@ -16,8 +17,15 @@ class SqlLoader(object):
         self.cmd_args = cmd_args
         self._check_args(cmd_args)
 
-        self.boundaries = cmd_args['boundaries']
-        self.demographic = cmd_args['boundaries']
+        self.boundaries = cmd_args.boundaries
+        self.demographic = cmd_args.data
+
+        if self.boundaries:
+            self.census_geo = CensusGeometry() 
+            self.census_description = CensusDescription()
+
+        if self.demographic:
+            self.census_data = CensusData(year=cmd_args.year, survey=cmd_args.survey)
 
     def _check_args(self, cmd_args):
         """Check:
@@ -27,10 +35,10 @@ class SqlLoader(object):
         if not any([arg_value for arg_value in cmd_args.__dict__.values()]):
             raise AttributeError("You need to specify at least one argument")
 
-        if cmd_args['boundaries'] != cmd_args['data']: # XOR
+        if cmd_args.boundaries == cmd_args.data: # XOR
             raise AttributeError("You cannot load boundaries and data at the same time")
 
-    def createtable_table_metadata(self, sql_exec, boundaries=True, demographic=False):
+    def createtable_table_metadata(self):
         """
         SqlAlchemy `table_metadata` Class
 
@@ -40,19 +48,19 @@ class SqlLoader(object):
             https://www2.census.gov/programs-surveys/acs/summary_file/2018/data/2018_5yr_Summary_FileTemplates.zip?#
         """
 
-        table_metadata_df = CensusDescription().get_table_metadata_df()
+        table_metadata_df = self.census_description.get_table_metadata_df()
         table_metadata_cols = table_metadata_df.reset_index().columns
 
-        table_metadata = sql_exec.create_table_class(
+        table_metadata = self.create_table_class(
             table_metadata_cols, "table_metadata", "TableMetaData"
         )
 
-        sql_exec.add(table_metadata_df, name="table_metadata", if_exists="replace")
+        self.add(table_metadata_df, name="table_metadata", if_exists="replace")
 
         print("table_metadata created and filled")
 
 
-    def createtable_county_boundaries(self, sql_exec, boundaries=True, demographic=False):
+    def createtable_county_boundaries(self):
         """
         SqlAlchemy `county_boundaries` Class
         
@@ -62,21 +70,21 @@ class SqlLoader(object):
             https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
         """
 
-        county_geom_gdf = CensusGeometry().get_county_boundaries()
+        county_geom_gdf = self.census_geo.get_county_boundaries()
         county_geom_df = pd.DataFrame(county_geom_gdf, dtype=str)
 
         county_geom_cols = county_geom_df.reset_index().columns
 
-        county_boundaries = sql_exec.create_table_class(
+        county_boundaries = self.create_table_class(
             county_geom_cols, "county_boundaries", "CountyBoundaries"
         )
 
-        sql_exec.add(county_geom_df, name="county_boundaries", if_exists="replace")
+        self.add(county_geom_df, name="county_boundaries", if_exists="replace")
 
         print("county_boundaries table created and filled")
 
 
-    def createtable_block_boundaries(self, sql_exec, state, boundaries=True, demographic=False):
+    def createtable_block_boundaries(self, state):
         """
         SqlAlchemy `block_boundaries` Class
         
@@ -86,22 +94,63 @@ class SqlLoader(object):
             https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
         """
 
-        block_geom_gdf = CensusGeometry().get_block_boundaries(state)
+        block_geom_gdf = self.census_geo.get_block_boundaries(state)
         block_geom_df = pd.DataFrame(block_geom_gdf, dtype=str)
         del block_geom_gdf
 
         block_geom_cols = block_geom_df.reset_index().columns
 
-        block_boundaries = sql_exec.create_table_class(
+        block_boundaries = self.create_table_class(
             block_geom_cols, "block_boundaries", "BlockBoundaries"
         )
 
-        sql_exec.add(block_geom_df, name="block_boundaries", if_exists="append")
+        self.add(block_geom_df, name="block_boundaries", if_exists="append")
 
         print(f"block_boundaries table created and filled with {state} blocks")
 
 
-def setup_argparse(boundaries=True)
+    def createtable_county_demographic_data(self, state):
+        """
+        SqlAlchemy `county_demographics` Class
+
+        Primary Key: GEOID {State FIP}{County FIP} 
+        """
+
+        df = self.census_data.get_county_data(state=state)
+
+        return df
+
+class ArgParser(object):
+
+    def __init__(self):
+
+        self.parser = argparse.ArgumentParser("Choose what to load into database")
+        self.arguments = {'boundaries':{'help':'load census boundary data', 'action':"store_true"},
+                          'data':{'help':'load census demographic data', 'action':'store_true'},
+                          "meta": {'help':"load metadata into sql db", 'action':"store_true"},
+                          'county':{'help':"load county demographic data/boundaries into sql db",
+                                    'action':"store_true"},
+                          'state':{'help':"select the state of the data you want to load",
+                                   'type':str},
+                          'log':{'help':"select the level of logging [debug, info, none]", 
+                                 'type':str,
+                                 'default':'none'},
+                          'year':{'help':'select year of the census that you want data from',
+                                 'type':int, 'default':2018},
+                          'survey'{'help':"select the census survey type you want data from ['acs5', 'acs1','etc.']",
+                                   'type':str, 'default':'acs5'}
+                        }
+
+    def get_cli_arguments(self):
+
+        for var_name, kwargs in self.arguments.items:
+            setup_single_argument(var_name, **kwargs)
+
+    def setup_single_argument(self, var_name, **kwargs):
+
+        self.parser.add_argument(f"-{var_name[0]}", f"--{var_name}", **kwargs)
+
+def setup_argparse():
     """
     Parse arguments from command line for Makefile.
 
@@ -109,6 +158,8 @@ def setup_argparse(boundaries=True)
     ----------
     boundaries : bool
         True if loading boundary files into db.
+    demographics : bool
+        True if loading demographic data into db.
 
     Returns
     ---------
@@ -192,4 +243,7 @@ def main(cmd_args=None, sql_exec=None):
 
 if __name__ == "__main__":
 
-    main()
+    cmd_args = setup_argparse()
+    sql_loader = SqlLoader(cmd_args)
+    import ipdb; ipdb.set_trace()
+#    main()
