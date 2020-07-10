@@ -21,7 +21,7 @@ class SqlLoader(SqlExec):
         self.demographic = cmd_args.data
 
         if self.boundaries:
-            self.census_geo = CensusGeometry() 
+            self.census_geo = CensusGeometry()
             self.census_description = CensusDescription()
 
         if self.demographic:
@@ -35,7 +35,7 @@ class SqlLoader(SqlExec):
         if not any([arg_value for arg_value in cmd_args.__dict__.values()]):
             raise AttributeError("You need to specify at least one argument")
 
-        if cmd_args.boundaries == cmd_args.data: # XOR
+        if cmd_args.boundaries == cmd_args.data:  # XOR
             raise AttributeError("You cannot load boundaries and data at the same time")
 
     def createtable_table_metadata(self):
@@ -59,7 +59,6 @@ class SqlLoader(SqlExec):
 
         print("table_metadata created and filled")
 
-
     def createtable_county_boundaries(self):
         """
         SqlAlchemy `county_boundaries` Class
@@ -82,7 +81,6 @@ class SqlLoader(SqlExec):
         self.add(county_geom_df, name="county_boundaries", if_exists="replace")
 
         print("county_boundaries table created and filled")
-
 
     def createtable_block_boundaries(self, state):
         """
@@ -108,7 +106,6 @@ class SqlLoader(SqlExec):
 
         print(f"block_boundaries table created and filled with {state} blocks")
 
-
     def createtable_county_demographic_data(self, state):
         """
         SqlAlchemy `county_demographics` Class
@@ -120,26 +117,39 @@ class SqlLoader(SqlExec):
 
         return df
 
-class ArgParser(object):
 
+class ArgParser(object):
     def __init__(self):
 
         self.parser = argparse.ArgumentParser("Choose what to load into database")
-        self.arguments = {'boundaries':{'help':'load census boundary data', 'action':"store_true"},
-                          'data':{'help':'load census demographic data', 'action':'store_true'},
-                          "meta": {'help':"load metadata into sql db", 'action':"store_true"},
-                          'county':{'help':"load county demographic data/boundaries into sql db",
-                                    'action':"store_true"},
-                          'state':{'help':"select the state of the data you want to load",
-                                   'type':str},
-                          'log':{'help':"select the level of logging [debug, info, none]", 
-                                 'type':str,
-                                 'default':'none'},
-                          'year':{'help':'select year of the census that you want data from',
-                                 'type':int, 'default':2018},
-                          'survey'{'help':"select the census survey type you want data from ['acs5', 'acs1','etc.']",
-                                   'type':str, 'default':'acs5'}
-                        }
+        self.arguments = {
+            "boundaries": {"help": "load census boundary data", "action": "store_true"},
+            "data": {"help": "load census demographic data", "action": "store_true"},
+            "meta": {"help": "load metadata into sql db", "action": "store_true"},
+            "county": {
+                "help": "load county demographic data/boundaries into sql db",
+                "action": "store_true",
+            },
+            "state": {
+                "help": "select the state of the data you want to load",
+                "type": str,
+            },
+            "log": {
+                "help": "select the level of logging [debug, info, none]",
+                "type": str,
+                "default": "none",
+            },
+            "year": {
+                "help": "select year of the census that you want data from",
+                "type": int,
+                "default": 2018,
+            },
+            "survey": {
+                "help": "select the census survey type you want data from ['acs5', 'acs1', etc.]",
+                "type": str,
+                "default": "acs5",
+            },
+        }
 
     def get_cli_arguments(self):
 
@@ -149,6 +159,7 @@ class ArgParser(object):
     def setup_single_argument(self, var_name, **kwargs):
 
         self.parser.add_argument(f"-{var_name[0]}", f"--{var_name}", **kwargs)
+
 
 def setup_argparse():
     """
@@ -185,10 +196,7 @@ def setup_argparse():
         action="store_true",
     )
     parser.add_argument(
-        "-s",
-        "--state",
-        help="select the state of the data you want to load",
-        type=str,
+        "-s", "--state", help="select the state of the data you want to load", type=str,
     )
     parser.add_argument(
         "-l",
@@ -202,6 +210,7 @@ def setup_argparse():
     cmd_args = parser.parse_args()
 
     return cmd_args
+
 
 def main_wrapper(main):
     def inner_wrapper():
@@ -245,5 +254,5 @@ if __name__ == "__main__":
 
     cmd_args = setup_argparse()
     sql_loader = SqlLoader(cmd_args)
-    import ipdb; ipdb.set_trace()
+
 #    main()

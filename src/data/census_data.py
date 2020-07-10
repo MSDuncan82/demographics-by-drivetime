@@ -47,4 +47,3 @@ if __name__ == "__main__":
 
     census_data = CensusData()
     df = census_data.get_county_data(state="Colorado")
-
