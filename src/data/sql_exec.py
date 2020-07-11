@@ -60,12 +60,12 @@ class SqlExec:
         self.session = sessionmaker(bind=self.engine)()
         self.Base = declarative_base()
         self.tables = self.Base.metadata.tables
+        self.inspector = inspect(self.engine)
 
     def get_table_info(self):
 
-        inspector = inspect(self.engine)
-        for table_name in inspector.get_table_names():
-            for column in inspector.get_columns(table_name):
+        for table_name in self.inspector.get_table_names():
+            for column in self.inspector.get_columns(table_name):
                 print(f"Table: {table_name}, Column: {column}")
 
     def add(self, obj, name=None, if_exists="append"):
@@ -94,8 +94,15 @@ class SqlExec:
 
     def add_pk_constraint(self, table_name, pk_col):
 
-        with self.engine.connect() as con:
-            con.execute(f"ALTER TABLE {table_name} ADD PRIMARY KEY ({pk_col})")
+        if self._pk_constraint_exists is None:
+            with self.engine.connect() as con:
+                con.execute(f"ALTER TABLE {table_name} ADD PRIMARY KEY ({pk_col})")
+
+    def _pk_constraint_exists(self, table_name):
+
+        pk_constraint = self.inspector.get_pk_constraint(table_name)
+
+        return pk_constraint["name"]
 
     def create_tables(self):
         """Create all tables from `Base`"""

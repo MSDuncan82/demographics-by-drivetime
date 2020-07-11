@@ -50,6 +50,12 @@ load_CO_boundaries:
 load_MT_boundaries:
 	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Montana" -l debug >> logs/loadsql_log.txt
 
+## Clear Database
+
+# delete_tables:
+delete_tables:
+	$(PYTHON_INTERPRETER) src/data/delete_tables.py
+
 ## Delete all compiled Python files
 clean: black
 	find . -name "*.py" -exec sed -i '/ipdb/d' {} + 

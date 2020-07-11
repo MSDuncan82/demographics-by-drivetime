@@ -140,7 +140,7 @@ class SqlLoader(SqlExec):
         data_table = self.create_table_class(
             data_table_cols, "demographics", "Demographics"
         )
-        self.add(data_df, name="demographics", if_exists="replace")
+        self.add(data_df, name="demographics", if_exists="append")
 
         print(f"Filled demographics table with {state} data")
 
