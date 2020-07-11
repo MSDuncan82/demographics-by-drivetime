@@ -78,6 +78,7 @@ target/
 # exclude data & gis from source control by default
 /gis/
 /data/
+/logs/
 
 # Mac OS-specific storage files
 .DS_Store
