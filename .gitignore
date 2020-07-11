@@ -79,6 +79,7 @@ target/
 /gis/
 /data/
 /logs/
+/logs/*
 
 # Mac OS-specific storage files
 .DS_Store
