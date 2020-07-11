@@ -9,23 +9,26 @@ from datetime import datetime
 
 
 class SqlLoader(SqlExec):
-    # TODO current finish moving functions to class methods
     # TODO add data functionality
     # TODO docs
     def __init__(self, cmd_args):
 
-        self.cmd_args = cmd_args
-        self._check_args(cmd_args)
+        super().__init__(db="census_data", verbose=True)
 
-        self.boundaries = cmd_args.boundaries
-        self.demographic = cmd_args.data
+        self.cmd_args = cmd_args
+        self._check_args(self.cmd_args)
+
+        self.boundaries = self.cmd_args.boundaries
+        self.demographic = self.cmd_args.data
 
         if self.boundaries:
             self.census_geo = CensusGeometry()
             self.census_description = CensusDescription()
 
         if self.demographic:
-            self.census_data = CensusData(year=cmd_args.year, survey=cmd_args.survey)
+            self.census_data = CensusData(
+                year=self.cmd_args.year, survey=self.cmd_args.type_survey
+            )
 
     def _check_args(self, cmd_args):
         """Check:
@@ -112,13 +115,37 @@ class SqlLoader(SqlExec):
 
         Primary Key: GEOID {State FIP}{County FIP} 
         """
-
         df = self.census_data.get_county_data(state=state)
 
-        return df
+        ## Geo Names AKA County Names
+
+        geo_df = df[["geo_names"]].iloc[1:]
+        geo_df.columns = ["geo_names"]
+        geo_df.index.name = "geo_id"
+
+        geo_table_cols = [geo_df.index.name, geo_df.columns[0]]
+
+        geo_names = self.create_table_class(geo_table_cols, "geo_names", "GeoNames")
+        self.add(geo_df, name="geo_names", if_exists="append")
+
+        print(f"Filled county geo names for {state} in the geo_names table")
+
+        ## census_data
+
+        data_df = df.iloc[1:, :-1]
+        data_df["state"] = state
+        data_df.index.name = "geoid"
+        data_table_cols = [data_df.index.name] + data_df.columns.tolist()
+
+        data_table = self.create_table_class(
+            data_table_cols, "demographics", "Demographics"
+        )
+        self.add(data_df, name="demographics", if_exists="replace")
+
+        print(f"Filled demographics table with {state} data")
 
 
-class LoadSqlArgParser(object):
+class ArgParserLoadSql(object):
     """
     Parse Arguments for Load Sql CLI
     
@@ -134,7 +161,6 @@ class LoadSqlArgParser(object):
     get_cli_arguments():
         setup arguments and return cmd_args
     """
-    
 
     def __init__(self):
 
@@ -161,7 +187,7 @@ class LoadSqlArgParser(object):
                 "type": int,
                 "default": 2018,
             },
-            "survey": {
+            "type_survey": {
                 "help": "select the census survey type you want data from ['acs5', 'acs1', etc.]",
                 "type": str,
                 "default": "acs5",
@@ -170,11 +196,11 @@ class LoadSqlArgParser(object):
 
     def get_cli_arguments(self):
 
-        for var_name, kwargs in self.arguments.items:
-            setup_single_argument(var_name, **kwargs)
+        for var_name, kwargs in self.arguments.items():
+            self.setup_single_argument(var_name, **kwargs)
 
-        parser._get_args()
-        cmd_args = parser.parse_args()
+        self.parser._get_args()
+        cmd_args = self.parser.parse_args()
 
         return cmd_args
 
@@ -183,64 +209,15 @@ class LoadSqlArgParser(object):
         self.parser.add_argument(f"-{var_name[0]}", f"--{var_name}", **kwargs)
 
 
-def setup_argparse():
-    """
-    Parse arguments from command line for Makefile.
-
-    Arguments
-    ----------
-    boundaries : bool
-        True if loading boundary files into db.
-    demographics : bool
-        True if loading demographic data into db.
-
-    Returns
-    ---------
-    cmd_args : Namespace
-        A simple object that holds the parsed arguments.
-    """
-
-    parser = argparse.ArgumentParser("Choose what to load into database")
-
-    parser.add_argument(
-        "-b", "--boundaries", help="load census boundary data", action="store_true"
-    )
-    parser.add_argument(
-        "-d", "--data", help="load census demographic data", action="store_true"
-    )
-    parser.add_argument(
-        "-m", "--meta", help="load metadata into sql db", action="store_true"
-    )
-    parser.add_argument(
-        "-c",
-        "--county",
-        help="load county demographic data/boundaries into sql db",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-s", "--state", help="select the state of the data you want to load", type=str,
-    )
-    parser.add_argument(
-        "-l",
-        "--log",
-        help="select the level of logging [debug, info, none]",
-        type=str,
-        default="none",
-    )
-
-    parser._get_args()
-    cmd_args = parser.parse_args()
-
-    return cmd_args
-
-
 def main_wrapper(main):
     def inner_wrapper():
-        cmd_args = setup_argparse()
+        argparser = ArgParserLoadSql()
+        cmd_args = argparser.get_cli_arguments()
+
         log_level = cmd_args.log.lower()
 
         verbose = True if log_level == "debug" else False
-        sql_exec = SqlExec(db="census_data", verbose=verbose)
+        sql_exec = SqlExec()
 
         if cmd_args.log.lower() in ["debug", "info"]:
             current_datetime_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -248,33 +225,39 @@ def main_wrapper(main):
                 f"""[{current_datetime_str}] Loading data to {sql_exec.session.bind}\nwith {', '.join(cmd_args.__dict__.keys())}"""
             )
 
-        return main(cmd_args=cmd_args, sql_exec=sql_exec)
+        return main(cmd_args=cmd_args, sql_loader=sql_loader)
 
     return inner_wrapper
 
 
 @main_wrapper
-def main(cmd_args=None, sql_exec=None):
+def main(cmd_args=None, sql_loader=None):
     """
     Run main functionality of load_sql
     
     Main function of load_sql that is to be used at the command line or in
     the Makefile to load the sql database with census data.
     """
-    # TODO use class instead
-    if cmd_args.meta:
-        createtable_table_metadata(sql_exec)
+    sql_loader = SqlLoader(cmd_args)
 
-    if cmd_args.county:
-        createtable_county_boundaries(sql_exec)
+    if sql_loader.boundaries:
 
-    if cmd_args.state:
-        createtable_block_boundaries(sql_exec, cmd_args.state)
+        if cmd_args.meta:
+            sql_loader.createtable_table_metadata()
+        if cmd_args.county:
+            sql_loader.createtable_county_boundaries()
+        if cmd_args.state:
+            sql_loader.createtable_block_boundaries(cmd_args.state)
+
+    if sql_loader.demographic:
+
+        if cmd_args.state:
+            sql_loader.createtable_county_demographic_data(cmd_args.state)
 
 
 if __name__ == "__main__":
 
-    cmd_args = setup_argparse()
+    cmd_args = ArgParserLoadSql().get_cli_arguments()
     sql_loader = SqlLoader(cmd_args)
 
-#    main()
+    main()

@@ -26,18 +26,28 @@ requirements: test_environment
 	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
 
 ## Load data to SQL db
-load_data: clean requirements load_meta load_county #TODO (find solution to memory issues) -> load_CO load_MT 
+load_all: load_boundaries load_demographics
+
+load_demographics: clean requirements load_CO_demo load_MT_demo
+
+load_CO_demo:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -d -s Colorado -l debug >> logs/loadsql_log.txt
+
+load_MT_demo:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -d -s Montana -l debug >> logs/loadsql_log.txt
+
+load_boundaries: clean requirements load_meta load_county #TODO (find solution to memory issues) -> load_CO load_MT 
 
 load_meta:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -m -l debug >> logs/loadsql_log.txt
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -b -m -l debug >> logs/loadsql_log.txt
 
 load_county:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -c -l debug >> logs/loadsql_log.txt
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -b -c -l debug >> logs/loadsql_log.txt
 
-load_CO:
-	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Colorado" -l debug >> logs/loadsql_log.txt
+load_CO_boundaries:
+	$(PYTHON_INTERPRETER) src/data/load_sql.py -b -s "Colorado" -l debug >> logs/loadsql_log.txt
 
-load_MT:
+load_MT_boundaries:
 	$(PYTHON_INTERPRETER) src/data/load_sql.py -s "Montana" -l debug >> logs/loadsql_log.txt
 
 ## Delete all compiled Python files
