@@ -3,8 +3,8 @@ import pandas as pd
 import geopandas as gpd
 from shapely import wkt
 
-class SqlGetter(SqlExec):
 
+class SqlGetter(SqlExec):
     def __init__(self):
 
         super().__init__()
@@ -22,9 +22,15 @@ class SqlGetter(SqlExec):
                         statename = '{state}'
                     """
 
-        county_boundaries_df = pd.read_sql_query(sql_str, self.engine, index_col='geoid')
-        county_boundaries_df['geometry'] = county_boundaries_df.geometry.apply(wkt.loads)
-        county_boundaries_gdf = gpd.GeoDataFrame(county_boundaries_df, geometry='geometry', crs="EPSG:4326")
+        county_boundaries_df = pd.read_sql_query(
+            sql_str, self.engine, index_col="geoid"
+        )
+        county_boundaries_df["geometry"] = county_boundaries_df.geometry.apply(
+            wkt.loads
+        )
+        county_boundaries_gdf = gpd.GeoDataFrame(
+            county_boundaries_df, geometry="geometry", crs="EPSG:4326"
+        )
 
         return county_boundaries_gdf
 
@@ -45,15 +51,16 @@ class SqlGetter(SqlExec):
                         state = '{state}';
                     """
 
-        demo_df = pd.read_sql_query(sql_str, self.engine, index_col='geoid')
-        
+        demo_df = pd.read_sql_query(sql_str, self.engine, index_col="geoid")
+
         return demo_df
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     sql_getter = SqlGetter()
 
     c_gdf = sql_getter.get_county_boundaries("Colorado")
     tm_df = sql_getter.get_table_meta()
     dem_c_df = sql_getter.get_demo_data("Colorado")
-    import ipdb; ipdb.set_trace()
+
